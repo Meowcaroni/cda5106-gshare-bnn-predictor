@@ -1,23 +1,31 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-import torch.optim as optim
-# You would need a library or custom implementation for BNN layers, 
-# e.g., using a library like 'blitz-bayesian-pytorch' or implementing 
-# 'DenseVariational' layers from scratch as in some tutorials.
+import torchbnn as bnn
 
-class BayesianBranchPredictor(nn.Module):
-    def __init__(self, input_size, hidden_size, output_size):
-        super(BayesianBranchPredictor, self).__init__()
-        # Example using conceptual 'BayesianLinear' layers
-        # Actual implementation requires defining weight and bias posteriors (e.g., normal distributions)
-        self.fc1 = BayesianLinear(input_size, hidden_size) 
-        self.fc2 = BayesianLinear(hidden_size, output_size)
+# Data Representation: Branch history registers (BHR) and program counters (PC) must be converted into tensor inputs.
+# Performance vs. Accuracy: BNNs provide higher accuracy through uncertainty management but can be slower than deterministic predictors due to multiple forward passes.
+# Libraries: Consider using IntelLabs/bayesian-torch for converting existing deterministic networks, or torchbnn for building from scratch.
 
-    def forward(self, x):
-        x = F.relu(self.fc1(x))
-        x = self.fc2(x)
-        return F.log_softmax(x, dim=1) # For classification (taken/not taken)
+# 1. Define Model
+model = nn.Sequential(
+    bnn.BayesLinear(prior_mu=0, prior_sigma=0.1, in_features=10, out_features=32),
+    nn.ReLU(),
+    bnn.BayesLinear(prior_mu=0, prior_sigma=0.1, in_features=32, out_features=1),
+    nn.Sigmoid()
+)
 
-# ... Training loop would involve calculating an approximate posterior
-# using methods like Variational Inference (VI) to minimize the ELBO loss.
+# 2. Loss Functions
+mse = nn.MSELoss() # Or BCELoss for classification
+kl = bnn.KLLoss(reduction_mean=False)
+optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
+
+# 3. Training Loop
+for epoch in range(100):
+    output = model(input_data)
+    
+    # Combined loss (Likelihood + KL Divergence)
+    loss = mse(output, target) + 0.01 * kl(model) 
+    
+    optimizer.zero_grad()
+    loss.backward()
+    optimizer.step()
