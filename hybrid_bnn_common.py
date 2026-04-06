@@ -20,18 +20,21 @@ import json
 import math
 import random
 from collections import deque
+# Add [Suggestion 2]: from collections.abc import Iterator, Sequence
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Deque, Dict, Iterator, List, Optional, Sequence, Tuple
+# Suggestion 2: If using Python 3.10+, all these aliases are deprecated and can be eliminated
+# Remove [Suggestion 2]:
+from typing import Deque, Dict, Iterator, List, Optional, Sequence, Tuple 
 
 import torch
 import torch.nn as nn
 
 
-TraceEntry = Tuple[int, bool]
+TraceEntry = Tuple[int, bool] # Replace [Suggestion 2]: TraceEntry = tuple[int, bool]
 
 
-def parse_trace(trace_path: str, max_branches: Optional[int] = None) -> Iterator[TraceEntry]:
+def parse_trace(trace_path: str, max_branches: Optional[int] = None) -> Iterator[TraceEntry]: # Replace [Suggestion 2]: max_branches: int | None = None
     with open(trace_path, "r", encoding="ascii") as trace_file:
         for index, line in enumerate(trace_file):
             if max_branches is not None and index >= max_branches:
@@ -60,7 +63,7 @@ class TwoBitCounterPredictor:
     def index(self, pc: int) -> int:
         return (pc >> 2) & ((1 << self.pc_bits) - 1)
 
-    def predict_detail(self, pc: int) -> Tuple[bool, int]:
+    def predict_detail(self, pc: int) -> Tuple[bool, int]: # Replace [Suggestion 2]: tuple[bool, int]
         counter = self.table[self.index(pc)]
         return counter >= self.threshold, counter
 
@@ -73,7 +76,6 @@ class TwoBitCounterPredictor:
 
     def weak(self, raw_counter: int, weak_states: int = 1) -> bool:
         return abs(raw_counter - 1.5) <= weak_states
-
 
 class GsharePredictor:
     def __init__(self, pc_bits: int, history_bits: int, counter_bits: int = 2):
@@ -96,7 +98,7 @@ class GsharePredictor:
             return index
         return index ^ self.ghr
 
-    def predict_detail(self, pc: int) -> Tuple[bool, int]:
+    def predict_detail(self, pc: int) -> Tuple[bool, int]: # Replace [Suggestion 2]: tuple[bool, int]
         counter = self.table[self.final_index(pc)]
         return counter >= self.threshold, counter
 
@@ -111,10 +113,11 @@ class GsharePredictor:
     def update_history(self, actual_taken: bool) -> None:
         if self.history_bits == 0:
             return
-        self.ghr >>= 1
+        # Suggestion: Potentially change GHR update procedure to shift left like in class example
+        self.ghr >>= 1 # Replace [Suggestion 1]: "self.ghr <<= 1"
         if actual_taken:
-            self.ghr |= 1 << (self.history_bits - 1)
-        self.ghr &= (1 << self.history_bits) - 1
+            self.ghr |= 1 << (self.history_bits - 1) # Replace [Suggestion 1]: "self.ghr |= 1"
+        self.ghr &= (1 << self.history_bits) - 1 # Mask away non-history bits
 
     def weak(self, raw_counter: int, weak_states: int = 1) -> bool:
         return abs(raw_counter - (self.threshold - 0.5)) <= weak_states
@@ -132,7 +135,7 @@ class BranchFeatureEncoder:
     def input_size(self) -> int:
         return self.pc_feature_bits + self.history_bits
 
-    def encode(self, pc: int) -> List[float]:
+    def encode(self, pc: int) -> List[float]: # Replace [Suggestion 2]: list[float]
         shifted_pc = pc >> 2
         pc_features = [1.0 if ((shifted_pc >> bit) & 1) else -1.0 for bit in range(self.pc_feature_bits)]
         return pc_features + list(self.history)
@@ -188,9 +191,9 @@ class BayesianNNPredictor:
         self.mc_samples = mc_samples
         self.examples_seen = 0
         self.training_steps = 0
-        self.buffer: Deque[Tuple[List[float], float]] = deque(maxlen=buffer_size)
+        self.buffer: Deque[Tuple[List[float], float]] = deque(maxlen=buffer_size) # Replace [Suggestion 2]: self.buffer: deque[tuple[list[float], float]] = deque(maxlen=buffer_size)
 
-    def predict(self, state: Sequence[float]) -> Tuple[bool, float, float]:
+    def predict(self, state: Sequence[float]) -> Tuple[bool, float, float]: # Replace [Suggestion 2]: tuple [bool, float, float]
         x = torch.tensor(state, dtype=torch.float32).unsqueeze(0)
         self.model.train()
         probs = []
@@ -252,6 +255,7 @@ class HybridBNNSimulator:
         feature_encoder: BranchFeatureEncoder,
         bnn_predictor: BayesianNNPredictor,
         weak_states: int = 1,
+        # TODO: Adjust abstract constants below based on foundational research paper (2-bit/BNN hybrid) and other resources for justifiable realism
         energy_base: float = 1.0,
         energy_bnn_infer: float = 8.0,
         energy_bnn_train: float = 2.0,
@@ -267,7 +271,7 @@ class HybridBNNSimulator:
         self.energy_bnn_train = energy_bnn_train
         self.misprediction_penalty = misprediction_penalty
 
-    def run(self, trace_path: str, max_branches: Optional[int] = None) -> HybridResult:
+    def run(self, trace_path: str, max_branches: Optional[int] = None) -> HybridResult: # Replace [Suggestion 2]: max_branches: int | None = None
         total_predictions = 0
         mispredictions = 0
         base_correct = 0
@@ -324,7 +328,7 @@ class HybridBNNSimulator:
         )
 
 
-def result_to_dict(result: HybridResult) -> Dict[str, object]:
+def result_to_dict(result: HybridResult) -> Dict[str, object]: # Replace [Suggestion 2]: -> dict[str, object]
     data = asdict(result)
     data["accuracy"] = round(result.accuracy, 6)
     data["misprediction_rate"] = round(result.misprediction_rate, 6)
@@ -333,7 +337,7 @@ def result_to_dict(result: HybridResult) -> Dict[str, object]:
     return data
 
 
-def write_csv_row(output_path: str, row: Dict[str, object]) -> None:
+def write_csv_row(output_path: str, row: Dict[str, object]) -> None:  # Replace [Suggestion 1]: row: dict[str, object]
     output = Path(output_path)
     output.parent.mkdir(parents=True, exist_ok=True)
     write_header = not output.exists()
@@ -344,7 +348,7 @@ def write_csv_row(output_path: str, row: Dict[str, object]) -> None:
         writer.writerow(row)
 
 
-def print_json_result(result: HybridResult, csv_path: Optional[str] = None) -> None:
+def print_json_result(result: HybridResult, csv_path: Optional[str] = None) -> None: # Replace [Suggestion 2]: csv_path: str | None = None
     row = result_to_dict(result)
     if csv_path:
         write_csv_row(csv_path, row)
