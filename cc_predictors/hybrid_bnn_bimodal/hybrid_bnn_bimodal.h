@@ -1,6 +1,7 @@
-#ifndef BRANCH_HYBRID_BNN_2BIT_SIMPLE_H
-#define BRANCH_HYBRID_BNN_2BIT_SIMPLE_H
+#ifndef BRANCH_HYBRID_BNN_BIMODAL_H
+#define BRANCH_HYBRID_BNN_BIMODAL_H
 
+#include <array>
 #include <bitset>
 #include <cstddef>
 #include <cstdint>
@@ -11,10 +12,12 @@
 #include "modules.h"
 #include "msl/fwcounter.h"
 
-class hybrid_bnn_2bit_simple : public champsim::modules::branch_predictor
+class hybrid_bnn_bimodal : public champsim::modules::branch_predictor
 {
   static constexpr std::size_t GLOBAL_HISTORY_LENGTH = 14;
   static constexpr std::size_t COUNTER_BITS = 2;
+  static constexpr std::size_t BIMODAL_TABLE_SIZE = 16384;
+  static constexpr std::size_t BIMODAL_PRIME = 16381;
   static constexpr std::size_t PC_FEATURE_BITS = 16;
   static constexpr std::size_t AUXILIARY_FEATURES = 3;
   static constexpr std::size_t BNN_INPUT_SIZE = PC_FEATURE_BITS + GLOBAL_HISTORY_LENGTH + AUXILIARY_FEATURES;
@@ -27,6 +30,7 @@ class hybrid_bnn_2bit_simple : public champsim::modules::branch_predictor
   struct base_prediction {
     bool taken = false;
     int counter = 0;
+    std::size_t index = 0;
     bool weak = false;
   };
 
@@ -40,16 +44,17 @@ class hybrid_bnn_2bit_simple : public champsim::modules::branch_predictor
 
   history_type speculative_history = {};
   history_type committed_history = {};
-  counter_type base_counter = {};
+  std::array<counter_type, BIMODAL_TABLE_SIZE> bimodal_table = {};
   std::deque<prediction_state> state_buf = {};
-  bnn_type bnn_predictor{24, 12, 0.20, 1e-3, 8, 32, 2048, 8, 128, 0.02, 13};
+  bnn_type bnn_predictor{24, 12, 0.20, 1e-3, 8, 32, 2048, 8, 128, 0.5, 19};
 
   static void push_history(history_type& history, bool taken);
   static bool is_weak_counter(int counter);
+  static std::size_t table_index(champsim::address ip);
   static bnn_type::feature_array encode_features(champsim::address ip, history_type history, const base_prediction& base);
 
-  base_prediction base_predict() const;
-  void update_base(bool taken);
+  base_prediction base_predict(champsim::address ip) const;
+  void update_base(const base_prediction& prediction, bool taken);
 
 public:
   using branch_predictor::branch_predictor;

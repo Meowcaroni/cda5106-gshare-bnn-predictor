@@ -1,17 +1,22 @@
-#include "hybrid_bnn_2bit_simple.h"
+#include "hybrid_bnn_bimodal_simple.h"
 
-void hybrid_bnn_2bit_simple::push_history(history_type& history, bool taken)
+void hybrid_bnn_bimodal_simple::push_history(history_type& history, bool taken)
 {
   history <<= 1;
   history.set(0, taken);
 }
 
-bool hybrid_bnn_2bit_simple::is_weak_counter(int counter)
+bool hybrid_bnn_bimodal_simple::is_weak_counter(int counter)
 {
   return counter == 1 || counter == 2;
 }
 
-auto hybrid_bnn_2bit_simple::encode_features(champsim::address ip, history_type history, const base_prediction& base) -> bnn_type::feature_array
+std::size_t hybrid_bnn_bimodal_simple::table_index(champsim::address ip)
+{
+  return ip.to<unsigned long>() % BIMODAL_PRIME;
+}
+
+auto hybrid_bnn_bimodal_simple::encode_features(champsim::address ip, history_type history, const base_prediction& base) -> bnn_type::feature_array
 {
   bnn_type::feature_array features = {};
   const auto shifted_ip = ip.to<uint64_t>() >> 2U;
@@ -30,20 +35,22 @@ auto hybrid_bnn_2bit_simple::encode_features(champsim::address ip, history_type 
   return features;
 }
 
-auto hybrid_bnn_2bit_simple::base_predict() const -> base_prediction
+auto hybrid_bnn_bimodal_simple::base_predict(champsim::address ip) const -> base_prediction
 {
-  const int counter = static_cast<int>(base_counter.value());
-  return base_prediction{base_counter.value() > (base_counter.maximum / 2), counter, is_weak_counter(counter)};
+  const auto index = table_index(ip);
+  const auto value = bimodal_table[index];
+  const int counter = static_cast<int>(value.value());
+  return base_prediction{value.value() > (value.maximum / 2), counter, index, is_weak_counter(counter)};
 }
 
-void hybrid_bnn_2bit_simple::update_base(bool taken)
+void hybrid_bnn_bimodal_simple::update_base(const base_prediction& prediction, bool taken)
 {
-  base_counter += taken ? 1 : -1;
+  bimodal_table[prediction.index] += taken ? 1 : -1;
 }
 
-bool hybrid_bnn_2bit_simple::predict_branch(champsim::address ip)
+bool hybrid_bnn_bimodal_simple::predict_branch(champsim::address ip)
 {
-  const auto base = base_predict();
+  const auto base = base_predict(ip);
   const auto features = encode_features(ip, speculative_history, base);
   const auto bnn = bnn_predictor.predict(features);
 
@@ -59,13 +66,13 @@ bool hybrid_bnn_2bit_simple::predict_branch(champsim::address ip)
   return final_prediction;
 }
 
-void hybrid_bnn_2bit_simple::last_branch_result(champsim::address ip, champsim::address branch_target, bool taken, uint8_t branch_type)
+void hybrid_bnn_bimodal_simple::last_branch_result(champsim::address ip, champsim::address branch_target, bool taken, uint8_t branch_type)
 {
   auto state = std::find_if(std::begin(state_buf), std::end(state_buf), [ip](const auto& entry) { return entry.ip == ip; });
   if (state == std::end(state_buf)) {
-    const auto base = base_predict();
+    const auto base = base_predict(ip);
     const auto features = encode_features(ip, committed_history, base);
-    update_base(taken);
+    update_base(base, taken);
     bnn_predictor.observe(features, taken);
     push_history(committed_history, taken);
     speculative_history = committed_history;
@@ -75,7 +82,7 @@ void hybrid_bnn_2bit_simple::last_branch_result(champsim::address ip, champsim::
   const auto saved = *state;
   state_buf.erase(state);
 
-  update_base(taken);
+  update_base(saved.base, taken);
   bnn_predictor.observe(saved.features, taken);
 
   push_history(committed_history, taken);

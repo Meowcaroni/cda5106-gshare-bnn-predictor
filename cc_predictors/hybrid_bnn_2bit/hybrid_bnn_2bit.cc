@@ -11,11 +11,6 @@ bool hybrid_bnn_2bit::is_weak_counter(int counter)
   return counter == 1 || counter == 2;
 }
 
-std::size_t hybrid_bnn_2bit::table_index(champsim::address ip)
-{
-  return (ip.to<std::size_t>() >> 2U) % BIMODAL_TABLE_SIZE;
-}
-
 auto hybrid_bnn_2bit::encode_features(champsim::address ip, history_type history, const base_prediction& base) -> bnn_type::feature_array
 {
   bnn_type::feature_array features = {};
@@ -35,26 +30,24 @@ auto hybrid_bnn_2bit::encode_features(champsim::address ip, history_type history
   return features;
 }
 
-auto hybrid_bnn_2bit::base_predict(champsim::address ip) const -> base_prediction
+auto hybrid_bnn_2bit::base_predict() const -> base_prediction
 {
-  const auto index = table_index(ip);
-  const auto value = bimodal_table[index];
-  const int counter = static_cast<int>(value.value());
-  return base_prediction{value.value() > (value.maximum / 2), counter, index, is_weak_counter(counter)};
+  const int counter = static_cast<int>(base_counter.value());
+  return base_prediction{base_counter.value() > (base_counter.maximum / 2), counter, is_weak_counter(counter)};
 }
 
-void hybrid_bnn_2bit::update_base(const base_prediction& prediction, bool taken)
+void hybrid_bnn_2bit::update_base(bool taken)
 {
-  bimodal_table[prediction.index] += taken ? 1 : -1;
+  base_counter += taken ? 1 : -1;
 }
 
 bool hybrid_bnn_2bit::predict_branch(champsim::address ip)
 {
-  const auto base = base_predict(ip);
+  const auto base = base_predict();
   const auto features = encode_features(ip, speculative_history, base);
   const auto bnn = bnn_predictor.predict(features);
 
-  // Use BNN if base is weak AND BNN is confident
+  // Use BNN when base is weak and BNN is confident
   const bool use_bnn = base.weak && bnn_predictor.is_confident(bnn);
   const bool final_prediction = use_bnn ? bnn.taken : base.taken;
 
@@ -70,9 +63,9 @@ void hybrid_bnn_2bit::last_branch_result(champsim::address ip, champsim::address
 {
   auto state = std::find_if(std::begin(state_buf), std::end(state_buf), [ip](const auto& entry) { return entry.ip == ip; });
   if (state == std::end(state_buf)) {
-    const auto base = base_predict(ip);
+    const auto base = base_predict();
     const auto features = encode_features(ip, committed_history, base);
-    update_base(base, taken);
+    update_base(taken);
     bnn_predictor.observe(features, taken);
     push_history(committed_history, taken);
     speculative_history = committed_history;
@@ -82,11 +75,10 @@ void hybrid_bnn_2bit::last_branch_result(champsim::address ip, champsim::address
   const auto saved = *state;
   state_buf.erase(state);
 
-  update_base(saved.base, taken);
+  update_base(taken);
   bnn_predictor.observe(saved.features, taken);
 
   push_history(committed_history, taken);
   if (saved.final_prediction != taken)
     speculative_history = committed_history;
 }
-
