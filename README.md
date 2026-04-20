@@ -3,26 +3,40 @@ This project evaluates the performance and accuracy of hybrid Bayesian Neural Ne
 
 # Repository Structure
 ```
-branch/
-├── hybrid_bnn_2bit/
-│   ├── hybrid_bnn_2bit.cc
-│   └── hybrid_bnn_2bit.h
-├── hybrid_bnn_2bit_simple/
-│   ├── hybrid_bnn_2bit_simple.cc
-│   └── hybrid_bnn_2bit_simple.h
-├── hybrid_bnn_bimodal/
-│   ├── hybrid_bnn_bimodal.cc
-│   └── hybrid_bnn_bimodal.h
-├── hybrid_bnn_bimodal_simple/
-│   ├── hybrid_bnn_bimodal_simple.cc
-│   └── hybrid_bnn_bimodal_simple.h
-├── hybrid_bnn_gshare/
-│   ├── hybrid_bnn_gshare.cc
-│   └── hybrid_bnn_gshare.h
-├── hybrid_bnn_gshare_simple/
-│   ├── hybrid_bnn_gshare_simple.cc
-│   └── hybrid_bnn_gshare_simple.h
-└── hybrid_bnn_common.h
+.
+├── bin
+│   └── example_trace.txt
+├── cc_predictors
+│   ├── hybrid_bnn_2bit
+│   │   ├── hybrid_bnn_2bit.cc
+│   │   └── hybrid_bnn_2bit.h
+│   ├── hybrid_bnn_2bit_simple
+│   │   ├── hybrid_bnn_2bit_simple.cc
+│   │   └── hybrid_bnn_2bit_simple.h
+│   ├── hybrid_bnn_bimodal
+│   │   ├── hybrid_bnn_bimodal.cc
+│   │   └── hybrid_bnn_bimodal.h
+│   ├── hybrid_bnn_bimodal_simple
+│   │   ├── hybrid_bnn_bimodal_simple.cc
+│   │   └── hybrid_bnn_bimodal_simple.h
+│   ├── hybrid_bnn_common.h
+│   ├── hybrid_bnn_gshare
+│   │   ├── hybrid_bnn_gshare.cc
+│   │   └── hybrid_bnn_gshare.h
+│   └── hybrid_bnn_gshare_simple
+│       ├── hybrid_bnn_gshare_simple.cc
+│       └── hybrid_bnn_gshare_simple.h
+├── compare_bnn_hybrids.py
+├── docs
+│   └── example.md
+├── gshare_bnn.py
+├── hybrid_bnn_common.py
+├── README.md
+├── Research_Paper_Group6.pdf
+├── src
+│   └── bnn.py
+├── TEAM_PROJECT_SUMMARY.md
+└── two_bit_bnn.py
 ```
 
 # Setup and Trace Acquisition
