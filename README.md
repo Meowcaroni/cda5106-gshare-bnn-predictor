@@ -1,95 +1,82 @@
-# Hybrid BNN Branch Predictor
+﻿# Project Overview
+This project evaluates the performance and accuracy of hybrid Bayesian Neural Network (BNN) branch predictors within the ChampSim environment. 
 
-This folder is now focused only on the current assignment:
-- [two_bit_bnn.py](/Users/abramtadros/Desktop/Lecture%20Slides/CDA%205106/BNN/two_bit_bnn.py)
-- [gshare_bnn.py](/Users/abramtadros/Desktop/Lecture%20Slides/CDA%205106/BNN/gshare_bnn.py)
-- [compare_bnn_hybrids.py](/Users/abramtadros/Desktop/Lecture%20Slides/CDA%205106/BNN/compare_bnn_hybrids.py)
-- [hybrid_bnn_common.py](/Users/abramtadros/Desktop/Lecture%20Slides/CDA%205106/BNN/hybrid_bnn_common.py)
+# Repository Structure
+branch/
+├── hybrid_bnn_2bit/
+│      ├── hybrid_bnn_2bit.cc
+│      └── hybrid_bnn_2bit.h
+│
+├── hybrid_bnn_2bit_simple/
+│      ├── hybrid_bnn_2bit_simple.cc
+│      └── hybrid_bnn_2bit_simple.h
+│
+├── hybrid_bnn_bimodal/
+│      ├── hybrid_bnn_bimodal.cc
+│      └── hybrid_bnn_bimodal.h
+│
+├── hybrid_bnn_bimodal_simple/
+│      ├── hybrid_bnn_bimodal_simple.cc
+│      └── hybrid_bnn_bimodal_simple.h
+│
+├── hybrid_bnn_gshare/
+│      ├── hybrid_bnn_gshare.cc
+│      └── hybrid_bnn_gshare.h
+│
+├── hybrid_bnn_gshare_simple/
+│      ├── hybrid_bnn_gshare_simple.cc
+│      └── hybrid_bnn_gshare_simple.h
+│
+└── hybrid_bnn_common.h
 
-`main(1).cc` was only used as background for predictor structure and trace handling.
-There are no MP2-specific scripts left in this folder.
+# Setup and Trace Acquisition
+The evaluation utilizes SPEC CPU 2006 traces. Use the following commands to download the necessary files into a traces/ directory:
 
-## Models
+## Download GCC Trace 
+``curl -L -f https://dpc3.compas.cs.stonybrook.edu/champsim-traces/speccpu/602.gcc_s-1850B.champsimtrace.xz -o traces/ 403.gcc-16B.champsimtrace.xz``
 
-`two_bit_bnn.py`
-- baseline: 2-bit saturating counter
-- fallback model: Bayesian-style neural network using MC dropout
+## Download PERLBENCH Trace 
+`` curl -L -f https://dpc3.compas.cs.stonybrook.edu/champsim-traces/speccpu/600.perlbench_s-210B.champsimtrace.xz -o traces/600.perlbench_s-210B.champsimtrace.xz ``
 
-`gshare_bnn.py`
-- baseline: gshare predictor
-- fallback model: Bayesian-style neural network using MC dropout
+## Configuration and Build
+The champsim_config.json is configured for a single-core out-of-order processor. To switch between predictors, update the "branch_predictor" field with the folder name of the desired model.
 
-Both scripts:
-- read the same trace format you already have
-- invoke the BNN only when the baseline is uncertain
-- train the BNN online while processing the trace
-- report accuracy and normalized energy
-
-## Run one model
-
-```bash
-python3 /Users/abramtadros/Desktop/Lecture\ Slides/CDA\ 5106/BNN/two_bit_bnn.py \
-  --trace "/Users/abramtadros/Desktop/Lecture Slides/CDA 5106/MachineProblem2/BranchPrediction/traces/gcc_trace.txt" \
-  --max-branches 100000 \
-  --csv "/Users/abramtadros/Desktop/Lecture Slides/CDA 5106/BNN/results/two_bit_bnn.csv"
+champsim_config.json:
+```
+{
+        "executable_name": "champsim",
+        "block_size": 64,
+        "page_size": 4096,
+        "heartbeat_frequency": 1000000,
+        "num_cores": 1,
+        "branch_predictor": "<predictor's name>",
+        "replacement": "lru",
+        "L1I": { "sets": 64, "ways": 8, "prefetcher": "no" },
+        "L1D": { "sets": 64, "ways": 12, "prefetcher": "no" },
+        "L2C": { "sets": 1024, "ways": 8, "prefetcher": "no" },
+        "LLC": { "sets": 2048, "ways": 16, "prefetcher": "no" }
+}
 ```
 
-```bash
-python3 /Users/abramtadros/Desktop/Lecture\ Slides/CDA\ 5106/BNN/gshare_bnn.py \
-  --trace "/Users/abramtadros/Desktop/Lecture Slides/CDA 5106/MachineProblem2/BranchPrediction/traces/gcc_trace.txt" \
-  --max-branches 100000 \
-  --csv "/Users/abramtadros/Desktop/Lecture Slides/CDA 5106/BNN/results/gshare_bnn.csv"
+## To compile the simulator:
+```
+rm -rf .csconfig
+make clean
+./config.sh champsim_config.json
+make
 ```
 
-## Compare both models
+# Execution Instructions
+Run the following commands to simulate the branch predictors. Each run uses a 2-million instruction warmup followed by a 5-million instruction detailed simulation.
 
-```bash
-python3 /Users/abramtadros/Desktop/Lecture\ Slides/CDA\ 5106/BNN/compare_bnn_hybrids.py \
-  --trace "/Users/abramtadros/Desktop/Lecture Slides/CDA 5106/MachineProblem2/BranchPrediction/traces/gcc_trace.txt" \
-  --trace "/Users/abramtadros/Desktop/Lecture Slides/CDA 5106/MachineProblem2/BranchPrediction/traces/perl_trace.txt" \
-  --trace "/Users/abramtadros/Desktop/Lecture Slides/CDA 5106/MachineProblem2/BranchPrediction/traces/jpeg_trace.txt" \
-  --output-csv "/Users/abramtadros/Desktop/Lecture Slides/CDA 5106/BNN/results/bnn_hybrid_comparison.csv" \
-  --max-branches 100000
-```
+## RUN GCC:
+```./bin/champsim --warmup-instructions 2000000 --simulation-instructions 5000000 traces/602.gcc_s-1850B.champsimtrace.xz```
+```./bin/champsim --warmup-instructions 2000000 --simulation-instructions 5000000 traces/403.gcc-16B.champsimtrace.xz```
 
-## Online workflow
+## RUN PERL:
+```./bin/champsim --warmup-instructions 2000000 --simulation-instructions 5000000 traces/600.perlbench_s-210B.champsimtrace.xz```
 
-Each run is split into two phases:
-
-1. Prediction phase
-   For each branch, the baseline predicts first.
-   If the baseline is weak, the BNN is invoked.
-
-2. Learning phase
-   After the true branch outcome is known, the BNN stores that example and periodically updates its weights during the same run.
-
-Default online-training settings:
-- `buffer_size = 4096`
-- `warmup = 512`
-- `train_interval = 16`
-- `batch_size = 64`
-
-This means the model learns as it sees more of the same trace.
-
-## Compare these metrics
-
-- `accuracy`
-- `misprediction_rate`
-- `bnn_invocation_rate`
-- `estimated_energy_units`
-- `estimated_penalty_cycles`
-
-`estimated_energy_units` is a normalized comparison metric:
-- each baseline prediction costs `energy_base`
-- each BNN inference costs `energy_bnn_infer`
-- each BNN training update costs `energy_bnn_train`
-
-It is useful for comparing the two designs on the same traces, but it is not a real hardware pJ measurement.
-
-## Important limitation
-
-The provided traces only contain:
-- branch PC
-- actual outcome
-
-So this project can compare `2-bit + BNN` against `gshare + BNN` directly, but it is not a full reproduction of the IEEE paper's exact ChampSim setup.
+## Evaluation Metrics
+The primary metric for this assignment is Prediction Accuracy (%).
+* Simple Policy: Invokes the BNN on all "weak" branch predictions.
+* Complex Policy: Leverages BNN-MCD uncertainty gating (variance threshold) to only override the baseline when the neural model is highly confident.
