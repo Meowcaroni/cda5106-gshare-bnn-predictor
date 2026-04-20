@@ -2,6 +2,7 @@
 This project evaluates the performance and accuracy of hybrid Bayesian Neural Network (BNN) branch predictors within the ChampSim environment. 
 
 # Repository Structure
+```
 branch/
 ├── hybrid_bnn_2bit/
 │   ├── hybrid_bnn_2bit.cc
@@ -22,6 +23,7 @@ branch/
 │   ├── hybrid_bnn_gshare_simple.cc
 │   └── hybrid_bnn_gshare_simple.h
 └── hybrid_bnn_common.h
+```
 
 # Setup and Trace Acquisition
 The evaluation utilizes SPEC CPU 2006 traces. Use the following commands to download the necessary files into a traces/ directory:
