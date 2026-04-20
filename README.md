@@ -26,14 +26,9 @@ This project evaluates the performance and accuracy of hybrid Bayesian Neural Ne
 │   └── hybrid_bnn_gshare_simple
 │       ├── hybrid_bnn_gshare_simple.cc
 │       └── hybrid_bnn_gshare_simple.h
-├── compare_bnn_hybrids.py
-├── gshare_bnn.py
-├── hybrid_bnn_common.py
 ├── README.md
-├── Research_Paper_Group6.pdf
-├── src
-│   └── bnn.py
-└── two_bit_bnn.py
+└── Research_Paper_Group6.pdf
+
 ```
 
 # Setup and Trace Acquisition
